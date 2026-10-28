@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="pageTitle">정보채널 - 커뮤니티</title>
+  <meta name="description" content="정보와 지식을 공유하는 실시간 커뮤니티 정보채널">
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-dark">
+  <!-- 상단 글로벌 네비게이션 바 -->
+  <header class="arca-header">
+    <div class="header-inner">
+      <div class="header-left">
+        <a href="#" class="brand-logo" onclick="app.navigateHome(event)">
+          <div class="logo-icon" id="brandLogoIcon"><i class="fa-solid fa-layer-group"></i></div>
+          <span class="logo-text" id="brandLogoText">정보채널</span>
+          <span class="channel-badge">LIVE</span>
+        </a>
+      </div>
+
+      <div class="header-center">
+        <div class="search-box">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="searchInput" placeholder="채널 내 게시글 검색 (제목, 내용, 작성자)" onkeyup="app.handleSearch(event)">
+          <button class="search-clear-btn" id="searchClearBtn" onclick="app.clearSearch()" style="display: none;">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- 관리자 모드 토글/상태 버튼 -->
+        <div id="adminStatusContainer">
+          <button class="btn btn-admin" id="adminBtn" onclick="app.openAdminModal()">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span id="adminBtnText">관리자 로그인</span>
+          </button>
+        </div>
+        <button class="btn btn-primary btn-write" onclick="app.openWriteModal()">
+          <i class="fa-solid fa-pen-to-square"></i> 글쓰기
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 채널 컨테이너 -->
+  <div class="main-container">
+    <!-- 채널 타이틀 배너 -->
+    <div class="channel-banner">
+      <div class="channel-info">
+        <div class="channel-avatar" id="channelAvatarIcon">
+          <i class="fa-solid fa-database"></i>
+        </div>
+        <div class="channel-meta">
+          <div class="channel-title-row">
+            <h1 class="channel-name" id="channelNameDisplay">정보채널</h1>
+            <span class="channel-tag">공식 채널</span>
+            <span class="subscriber-count"><i class="fa-solid fa-users"></i> 구독자 15.2k</span>
+          </div>
+          <p class="channel-desc" id="channelDescDisplay">유용한 IT 정보, 꿀팁, 일상 잡담을 자유롭게 나누는 소통 공간입니다.</p>
+        </div>
+      </div>
+      <div class="channel-actions">
+        <button class="btn btn-sub" onclick="app.toggleSubscribe(this)">
+          <i class="fa-solid fa-star"></i> <span>구독중</span>
+        </button>
+        <!-- 관리자 전용 채널 설정 버튼 (관리자 로그인 시 표시) -->
+        <button class="btn btn-channel-settings admin-only" id="channelSettingsBtn" style="display: none;" onclick="app.openChannelManageModal()" title="채널 및 아이콘/이름 설정">
+          <i class="fa-solid fa-sliders"></i> 채널/아이콘 관리
+        </button>
+        <button class="btn btn-icon" title="게시판 새로고침" onclick="app.refreshBoard()">
+          <i class="fa-solid fa-arrows-rotate"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 탭 네비게이션 (전체 통합 탭 + 동적 채널 탭) -->
+    <nav class="channel-nav">
+      <div class="tab-list" id="categoryTabList">
+        <!-- JS 동적 생성 (전체 탭 + 일반/정보/잡담 등 관리자가 수정한 탭들) -->
+      </div>
+
+      <div class="nav-controls">
+        <div class="sort-selector">
+          <select id="sortSelect" onchange="app.handleSortChange()">
+            <option value="newest">최신순</option>
+            <option value="views">조회수순</option>
+            <option value="likes">추천순</option>
+          </select>
+        </div>
+      </div>
+    </nav>
+
+    <!-- 관리자 권한 알림 바 (관리자 모드 활성화 시 표시 - 비밀 코드 노출 없음) -->
+    <div class="admin-banner" id="adminAlertBanner" style="display: none;">
+      <div class="admin-banner-content">
+        <i class="fa-solid fa-shield-cat"></i>
+        <span><strong>관리자 권한 활성화됨</strong> (모든 게시글 및 댓글 강제 관리, 채널/아이콘 편집 가능)</span>
+      </div>
+      <div class="admin-banner-actions">
+        <button class="btn-admin-pill" onclick="app.openChannelManageModal()">
+          <i class="fa-solid fa-gear"></i> 채널/탭 설정
+        </button>
+        <button class="btn-admin-pill" onclick="app.openAdminCodeChangeModal()">
+          <i class="fa-solid fa-key"></i> 관리자 코드 변경
+        </button>
+        <button class="admin-logout-btn" onclick="app.logoutAdmin()">관리자 로그아웃</button>
+      </div>
+    </div>
+
+    <!-- 본문 영역: 게시글 목록 / 상세 뷰 -->
+    <main class="content-area">
+      <!-- 1. 게시글 목록 뷰 -->
+      <section id="listView" class="view-section active">
+        <!-- 공지사항 핀 -->
+        <div class="notice-pin-bar">
+          <span class="badge badge-notice"><i class="fa-solid fa-bullhorn"></i> 공지</span>
+          <a href="#" onclick="app.openNoticeDetail(event)" class="notice-pin-link">
+            [안내] 정보채널 게시판 이용 규칙 및 사진/동영상 첨부 가이드
+          </a>
+          <span class="notice-author">운영진</span>
+          <span class="notice-date">2026.09.09</span>
+        </div>
+
+        <!-- 게시글 테이블 -->
+        <div class="board-table-wrapper">
+          <table class="board-table">
+            <thead>
+              <tr>
+                <th class="col-num">번호</th>
+                <th class="col-category">탭</th>
+                <th class="col-title">제목</th>
+                <th class="col-author">작성자</th>
+                <th class="col-date">작성일</th>
+                <th class="col-views">조회</th>
+                <th class="col-likes">추천</th>
+                <th class="col-manage admin-only-col" style="display: none;">관리</th>
+              </tr>
+            </thead>
+            <tbody id="boardTableBody">
+              <!-- JS 동적 렌더링 -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 빈 상태 표시 -->
+        <div id="emptyState" class="empty-state" style="display: none;">
+          <div class="empty-icon-wrap">
+            <i class="fa-regular fa-folder-open empty-icon"></i>
+          </div>
+          <h3>등록된 게시글이 없습니다.</h3>
+          <p>첫 번째 글을 작성하여 소통을 시작해보세요!</p>
+          <button class="btn btn-primary" onclick="app.openWriteModal()">
+            <i class="fa-solid fa-pen"></i> 첫 번째 글 쓰기
+          </button>
+        </div>
+
+        <!-- 하단 액션 & 페이지네이션 -->
+        <div class="board-bottom-bar">
+          <div class="board-stats">
+            총 <span id="totalPostsCount">0</span>개의 게시글
+            <span class="page-info-tag">(페이지 당 20개)</span>
+          </div>
+
+          <!-- 페이지네이션 컨트롤러 -->
+          <div class="pagination" id="pagination">
+            <!-- JS 동적 생성 -->
+          </div>
+
+          <div class="board-bottom-actions">
+            <button class="btn btn-primary" onclick="app.openWriteModal()">
+              <i class="fa-solid fa-pen"></i> 글쓰기
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 게시글 상세 보기 뷰 -->
+      <section id="detailView" class="view-section" style="display: none;">
+        <article class="post-detail-card">
+          <div class="post-detail-header">
+            <div class="post-category-tag" id="detailCategoryBadge">일반</div>
+            <h2 class="post-detail-title" id="detailTitle">제목 영역</h2>
+            <div class="post-meta-row">
+              <div class="meta-left">
+                <span class="author" id="detailAuthor"><i class="fa-regular fa-user"></i> 닉네임</span>
+                <span class="dot">•</span>
+                <span class="date" id="detailDate"><i class="fa-regular fa-clock"></i> 2026-09-09</span>
+              </div>
+              <div class="meta-right">
+                <span><i class="fa-regular fa-eye"></i> 조회 <strong id="detailViews">0</strong></span>
+                <span class="dot">•</span>
+                <span><i class="fa-regular fa-thumbs-up"></i> 추천 <strong id="detailLikes">0</strong></span>
+                <span class="dot">•</span>
+                <span><i class="fa-regular fa-comment-dots"></i> 댓글 <strong id="detailCommentsCount">0</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 첨부 미디어 영역 (사진 또는 동영상) -->
+          <div class="post-detail-media" id="detailMediaContainer" style="display: none;">
+            <!-- 이미지 표시 -->
+            <img id="detailImage" src="" alt="첨부 이미지" style="display: none;">
+            <!-- 동영상 재생기 표시 -->
+            <video id="detailVideo" controls playsinline style="display: none;"></video>
+          </div>
+
+          <!-- 본문 내용 -->
+          <div class="post-detail-body" id="detailContent">
+            내용 영역
+          </div>
+
+          <!-- 추천 및 공유 인터랙션 -->
+          <div class="post-vote-bar">
+            <button class="btn-vote btn-upvote" onclick="app.likePost()">
+              <i class="fa-solid fa-thumbs-up"></i>
+              <span>개념 추천</span>
+              <strong id="voteCountBadge">0</strong>
+            </button>
+            <button class="btn-vote btn-downvote" onclick="app.dislikePost()">
+              <i class="fa-solid fa-thumbs-down"></i>
+              <span>비추천</span>
+            </button>
+          </div>
+
+          <!-- 글 관리(삭제 등) 및 목록 복귀 바 -->
+          <div class="post-action-footer">
+            <div class="footer-left">
+              <button class="btn btn-secondary" onclick="app.navigateHome()">
+                <i class="fa-solid fa-list"></i> 목록으로
+              </button>
+            </div>
+            <div class="footer-right">
+              <!-- 관리자 삭제 버튼 -->
+              <button class="btn btn-danger-admin" id="detailAdminDeleteBtn" style="display: none;" onclick="app.adminDeleteCurrentPost()">
+                <i class="fa-solid fa-trash-can"></i> [관리자] 즉시 강제 삭제
+              </button>
+              <!-- 일반 삭제 버튼 (비밀번호 확인) -->
+              <button class="btn btn-danger" id="detailUserDeleteBtn" onclick="app.openDeleteModal()">
+                <i class="fa-regular fa-trash-can"></i> 글 삭제
+              </button>
+            </div>
+          </div>
+
+          <!-- 댓글 섹션 -->
+          <section class="comment-section">
+            <div class="comment-header">
+              <h3><i class="fa-solid fa-comments"></i> 댓글 <span id="commentCountTotal">0</span>개</h3>
+            </div>
+
+            <!-- 댓글 입력 폼 -->
+            <div class="comment-form-card">
+              <div class="comment-inputs-row">
+                <input type="text" id="commentAuthorInput" placeholder="닉네임 (기본: 익명)" maxlength="15">
+                <input type="password" id="commentPasswordInput" placeholder="비밀번호" maxlength="15">
+              </div>
+              <div class="comment-textarea-row">
+                <textarea id="commentContentInput" placeholder="댓글을 남겨보세요. 타인을 비방하거나 불쾌감을 주는 내용은 삭제될 수 있습니다." rows="3"></textarea>
+                <button class="btn btn-primary btn-comment-submit" onclick="app.submitComment()">등록</button>
+              </div>
+            </div>
+
+            <!-- 댓글 목록 -->
+            <div class="comment-list" id="commentListContainer">
+              <!-- JS 동적 렌더링 -->
+            </div>
+          </section>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <!-- ==========================================
+       모달 1. 새 글쓰기 모달 (사진/동영상 직접 업로드)
+       ========================================== -->
+  <div class="modal-backdrop" id="writeModal" style="display: none;">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-pen-nib"></i> 새 게시글 작성
+        </div>
+        <button class="modal-close-btn" onclick="app.closeWriteModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="writeForm" onsubmit="app.submitNewPost(event)">
+          <!-- 카테고리 탭 선택 (동적 렌더링) -->
+          <div class="form-group">
+            <label class="form-label">탭 / 채널 선택 <span class="required">*</span></label>
+            <div class="category-radio-group" id="writeCategoryRadioGroup">
+              <!-- JS에서 등록된 채널들 동적 생성 -->
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col-6">
+              <label class="form-label" for="writeAuthor">작성자 닉네임 <span class="required">*</span></label>
+              <input type="text" id="writeAuthor" class="form-control" placeholder="닉네임 입력" required maxlength="15">
+            </div>
+            <div class="form-group col-6">
+              <label class="form-label" for="writePassword">글 비밀번호 <span class="required">*</span></label>
+              <input type="password" id="writePassword" class="form-control" placeholder="삭제용 비밀번호" required maxlength="20">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="writeTitle">제목 <span class="required">*</span></label>
+            <input type="text" id="writeTitle" class="form-control" placeholder="제목을 입력하세요 (최대 100자)" required maxlength="100">
+          </div>
+
+          <!-- 사진 / 동영상 직접 업로드 필드 -->
+          <div class="form-group">
+            <label class="form-label">
+              <i class="fa-solid fa-photo-film"></i> 사진 / 동영상 직접 첨부 (선택)
+            </label>
+            
+            <div class="media-upload-area" id="mediaDropZone">
+              <input type="file" id="writeMediaFile" accept="image/*,video/*" onchange="app.handleMediaFileUpload(event)" style="display: none;">
+              
+              <div class="upload-trigger-row">
+                <button type="button" class="btn btn-secondary btn-upload-choose" onclick="document.getElementById('writeMediaFile').click()">
+                  <i class="fa-solid fa-cloud-arrow-up"></i> 내 PC에서 파일 선택 (사진 / 동영상)
+                </button>
+                <span class="upload-hint">지원 파일: JPG, PNG, GIF, WebP, MP4, WebM 등</span>
+              </div>
+
+              <!-- 미디어 미리보기 영역 -->
+              <div id="mediaPreviewContainer" class="media-preview-box" style="display: none;">
+                <div class="media-preview-content" id="mediaPreviewContent">
+                  <!-- 이미지 미리보기 -->
+                  <img id="mediaImagePreview" src="" alt="업로드 이미지 미리보기" style="display: none;">
+                  <!-- 동영상 미리보기 -->
+                  <video id="mediaVideoPreview" controls playsinline style="display: none;"></video>
+                </div>
+                <div class="media-preview-meta">
+                  <span id="mediaFileName" class="media-filename"></span>
+                  <button type="button" class="btn-remove-media" onclick="app.removeUploadedMedia()" title="첨부 삭제">
+                    <i class="fa-solid fa-trash-can"></i> 첨부 취소
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="writeContent">내용 <span class="required">*</span></label>
+            <textarea id="writeContent" class="form-control" rows="8" placeholder="내용을 작성하세요. 건전하고 유익한 커뮤니티 문화를 만들어주세요." required></textarea>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="app.closeWriteModal()">취소</button>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> 작성 완료</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       모달 2. 관리자 인증 모달 (보안 유지: 코드 힌트 없음)
+       ========================================== -->
+  <div class="modal-backdrop" id="adminModal" style="display: none;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-user-shield"></i> 관리자 로그인
+        </div>
+        <button class="modal-close-btn" onclick="app.closeAdminModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="admin-modal-desc">
+          비밀 관리자 코드를 입력하여 관리자 모드로 전환합니다.
+        </p>
+        <form onsubmit="app.verifyAdminCode(event)">
+          <div class="form-group">
+            <label class="form-label" for="adminCodeInput">관리자 코드</label>
+            <div class="admin-input-wrap">
+              <input type="password" id="adminCodeInput" class="form-control" placeholder="관리자 코드 입력" autocomplete="off" required>
+              <button type="button" class="btn-show-code" onclick="app.toggleAdminCodeVisibility()">
+                <i class="fa-regular fa-eye" id="adminCodeEyeIcon"></i>
+              </button>
+            </div>
+            <div id="adminErrorMsg" class="form-error-msg" style="display: none;">
+              관리자 코드가 일치하지 않습니다.
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="app.closeAdminModal()">취소</button>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-lock-open"></i> 인증하기</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       모달 3. 채널 및 아이콘/이름 관리 모달 (관리자 전용)
+       ========================================== -->
+  <div class="modal-backdrop" id="channelManageModal" style="display: none;">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-sliders"></i> 채널(탭) 및 아이콘/이름 관리
+        </div>
+        <button class="modal-close-btn" onclick="app.closeChannelManageModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- 1. 채널 기본 정보 수정 섹션 -->
+        <div class="admin-setting-section">
+          <h4 class="section-subtitle"><i class="fa-solid fa-circle-info"></i> 채널 기본 정보 설정</h4>
+          <form onsubmit="app.saveChannelMeta(event)" class="setting-form-row">
+            <div class="form-row">
+              <div class="form-group col-4">
+                <label class="form-label">채널 이름</label>
+                <input type="text" id="settingChannelName" class="form-control" placeholder="채널명" required>
+              </div>
+              <div class="form-group col-4">
+                <label class="form-label">대표 아이콘 (FontAwesome)</label>
+                <input type="text" id="settingChannelIcon" class="form-control" placeholder="예: fa-solid fa-database">
+              </div>
+              <div class="form-group col-4">
+                <label class="form-label">&nbsp;</label>
+                <button type="submit" class="btn btn-primary btn-block">정보 저장</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">채널 한줄 소개/설명</label>
+              <input type="text" id="settingChannelDesc" class="form-control" placeholder="채널 설명 입력">
+            </div>
+          </form>
+        </div>
+
+        <hr class="setting-divider">
+
+        <!-- 2. 채널(탭) 목록 및 수정/추가 섹션 -->
+        <div class="admin-setting-section">
+          <div class="section-header-flex">
+            <h4 class="section-subtitle"><i class="fa-solid fa-table-cells"></i> 탭 목록 및 아이콘 수정</h4>
+            <button class="btn btn-sm btn-primary" onclick="app.showAddChannelForm()">
+              <i class="fa-solid fa-plus"></i> 새 탭(채널) 추가
+            </button>
+          </div>
+          
+          <!-- 새 탭 추가 폼 (토글) -->
+          <div id="addChannelFormContainer" class="channel-add-card" style="display: none;">
+            <h5><i class="fa-solid fa-plus-circle"></i> 새 탭 추가하기</h5>
+            <div class="form-row">
+              <div class="form-group col-4">
+                <label class="form-label">탭 고유ID (영문/숫자)</label>
+                <input type="text" id="newChannelId" class="form-control" placeholder="예: game, news" maxlength="20">
+              </div>
+              <div class="form-group col-4">
+                <label class="form-label">탭 이름</label>
+                <input type="text" id="newChannelName" class="form-control" placeholder="예: 게임, 뉴스" maxlength="15">
+              </div>
+              <div class="form-group col-4">
+                <label class="form-label">아이콘 클래스</label>
+                <input type="text" id="newChannelIcon" class="form-control" placeholder="예: fa-solid fa-gamepad" value="fa-solid fa-tag">
+              </div>
+            </div>
+            <!-- 아이콘 빠른 선택 칩 -->
+            <div class="icon-preset-list">
+              <span class="preset-label">추천 아이콘 선택:</span>
+              <button type="button" class="icon-chip" onclick="app.setNewChannelIcon('fa-regular fa-comments')"><i class="fa-regular fa-comments"></i> 말풍선</button>
+              <button type="button" class="icon-chip" onclick="app.setNewChannelIcon('fa-solid fa-desktop')"><i class="fa-solid fa-desktop"></i> 모니터</button>
+              <button type="button" class="icon-chip" onclick="app.setNewChannelIcon('fa-solid fa-mug-hot')"><i class="fa-solid fa-mug-hot"></i> 커피/잡담</button>
+              <button type="button" class="icon-chip" onclick="app.setNewChannelIcon('fa-solid fa-gamepad')"><i class="fa-solid fa-gamepad"></i> 게임</button>
+              <button type="button" class="icon-chip" onclick="app.setNewChannelIcon('fa-solid fa-microchip')"><i class="fa-solid fa-microchip"></i> 칩셋/하드웨어</button>
+              <button type="button" class="icon-chip" onclick="app.setNewChannelIcon('fa-solid fa-newspaper')"><i class="fa-solid fa-newspaper"></i> 뉴스</button>
+              <button type="button" class="icon-chip" onclick="app.setNewChannelIcon('fa-solid fa-fire')"><i class="fa-solid fa-fire"></i> 인기</button>
+              <button type="button" class="icon-chip" onclick="app.setNewChannelIcon('fa-solid fa-code')"><i class="fa-solid fa-code"></i> 코드</button>
+            </div>
+            <div class="form-actions-right">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="app.hideAddChannelForm()">취소</button>
+              <button type="button" class="btn btn-primary btn-sm" onclick="app.saveNewChannel()">등록</button>
+            </div>
+          </div>
+
+          <!-- 탭 목록 테이블 -->
+          <div class="channel-table-wrapper">
+            <table class="channel-table">
+              <thead>
+                <tr>
+                  <th>탭 아이콘</th>
+                  <th>탭 이름</th>
+                  <th>탭 ID</th>
+                  <th>미리보기</th>
+                  <th>관리</th>
+                </tr>
+              </thead>
+              <tbody id="channelSettingsTableBody">
+                <!-- JS 동적 렌더링 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="app.closeChannelManageModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       모달 4. 탭 개별 수정 모달 (아이콘/이름 변경)
+       ========================================== -->
+  <div class="modal-backdrop" id="editTabModal" style="display: none;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-pen-to-square"></i> 탭(채널) 수정
+        </div>
+        <button class="modal-close-btn" onclick="app.closeEditTabModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="app.submitEditChannel(event)">
+          <input type="hidden" id="editChannelId">
+          <div class="form-group">
+            <label class="form-label">탭 이름</label>
+            <input type="text" id="editChannelName" class="form-control" required maxlength="15">
+          </div>
+          <div class="form-group">
+            <label class="form-label">아이콘 클래스 (FontAwesome)</label>
+            <input type="text" id="editChannelIcon" class="form-control" required>
+          </div>
+          <!-- 빠른 아이콘 선택 -->
+          <div class="icon-preset-list mini">
+            <button type="button" class="icon-chip" onclick="app.setEditChannelIcon('fa-regular fa-comments')"><i class="fa-regular fa-comments"></i></button>
+            <button type="button" class="icon-chip" onclick="app.setEditChannelIcon('fa-solid fa-desktop')"><i class="fa-solid fa-desktop"></i></button>
+            <button type="button" class="icon-chip" onclick="app.setEditChannelIcon('fa-solid fa-mug-hot')"><i class="fa-solid fa-mug-hot"></i></button>
+            <button type="button" class="icon-chip" onclick="app.setEditChannelIcon('fa-solid fa-gamepad')"><i class="fa-solid fa-gamepad"></i></button>
+            <button type="button" class="icon-chip" onclick="app.setEditChannelIcon('fa-solid fa-laptop-code')"><i class="fa-solid fa-laptop-code"></i></button>
+            <button type="button" class="icon-chip" onclick="app.setEditChannelIcon('fa-solid fa-circle-question')"><i class="fa-solid fa-circle-question"></i></button>
+            <button type="button" class="icon-chip" onclick="app.setEditChannelIcon('fa-solid fa-bullhorn')"><i class="fa-solid fa-bullhorn"></i></button>
+            <button type="button" class="icon-chip" onclick="app.setEditChannelIcon('fa-solid fa-star')"><i class="fa-solid fa-star"></i></button>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="app.closeEditTabModal()">취소</button>
+            <button type="submit" class="btn btn-primary">수정 완료</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       모달 5. 관리자 코드 변경 모달
+       ========================================== -->
+  <div class="modal-backdrop" id="adminCodeChangeModal" style="display: none;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-key"></i> 관리자 코드 변경
+        </div>
+        <button class="modal-close-btn" onclick="app.closeAdminCodeChangeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="app.submitChangeAdminCode(event)">
+          <div class="form-group">
+            <label class="form-label">새로운 관리자 코드 입력</label>
+            <input type="password" id="newAdminCodeInput" class="form-control" placeholder="새 관리자 코드" required minlength="4">
+          </div>
+          <div class="form-group">
+            <label class="form-label">새 관리자 코드 확인</label>
+            <input type="password" id="newAdminCodeConfirmInput" class="form-control" placeholder="새 관리자 코드 재입력" required minlength="4">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="app.closeAdminCodeChangeModal()">취소</button>
+            <button type="submit" class="btn btn-primary">코드 변경</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       모달 6. 일반 사용자 게시글 삭제 확인 모달
+       ========================================== -->
+  <div class="modal-backdrop" id="userDeleteModal" style="display: none;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-trash-can"></i> 글 삭제
+        </div>
+        <button class="modal-close-btn" onclick="app.closeDeleteModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="delete-modal-desc">
+          글을 삭제하려면 작성 시 설정한 비밀번호를 입력해주세요.
+        </p>
+        <form onsubmit="app.submitUserDelete(event)">
+          <div class="form-group">
+            <label class="form-label" for="deletePasswordInput">글 비밀번호</label>
+            <input type="password" id="deletePasswordInput" class="form-control" placeholder="비밀번호 입력" required>
+            <div id="deleteErrorMsg" class="form-error-msg" style="display: none;">
+              비밀번호가 일치하지 않습니다.
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="app.closeDeleteModal()">취소</button>
+            <button type="submit" class="btn btn-danger"><i class="fa-solid fa-trash"></i> 삭제</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 토스트 알림 컨테이너 -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- 자바스크립트 로직 로드 -->
+  <script src="app.js"></script>
+</body>
+</html>
